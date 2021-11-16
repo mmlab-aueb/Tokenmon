@@ -306,13 +306,18 @@ contract ERC721Metadata is ERC721Token {
         setTokenUri(_tokenId, uri);
     }
 }
-
+// smart contract address rinkeby: 0xd0d1497F7478e07ED49154602F865eC265d4863c
 contract Tokenmon is ERC721Metadata {
 
     uint256 private idcounter;
 
     constructor () ERC721Metadata("Tokenmon", "TKM") {
         idcounter = 0;
+    }
+    
+    function getIdcounter() public view returns (uint256) {
+        // IMPLEMENT OWNER-ONLY FUNCTION CALL.
+        return idcounter;
     }
 
     function createToken(string memory _tokenURI) public returns (uint256) {
@@ -321,5 +326,20 @@ contract Tokenmon is ERC721Metadata {
         idcounter++;
         return currId;
     }
-
+    
+    function evolveToken(uint256 _tid, string memory _newTokenURI) public returns (uint256) {
+        setTokenUri(_tid, _newTokenURI);
+        return _tid;
+    }
+    
+    function fuseTokens(uint256 _tid1, uint256 _tid2, string memory _unifiedTokenURI) public returns (uint256) {
+        // TO DO: IMPLEMENT
+        uint256 currId = idcounter;
+        super.mint(msg.sender, currId, _unifiedTokenURI);
+        super.burn(_tid1);
+        super.burn(_tid2);
+        idcounter++;
+        return currId;
+    }
+    
 } 

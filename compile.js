@@ -8,17 +8,17 @@ const fs = require('fs');
 // Solidity compiler module
 const solc = require('solc');
 //import solc from 'solc';
-
+const _source_contract = 'Tokenmon.sol'
 
 // Get the source code...
-const tokenmonPath = path.resolve(__dirname, 'contract', 'Tokenmon.sol');
+const tokenmonPath = path.resolve(__dirname, 'contract', _source_contract);
 const source = fs.readFileSync(tokenmonPath, 'utf8');
 
 
 var input = {
     language: 'Solidity',
     sources: {
-        'Tokenmon.sol' : {
+        _source_contract : {
             content: source
         }
     },
@@ -30,4 +30,4 @@ var input = {
         }
     }
 };
-module.exports = JSON.parse(solc.compile(JSON.stringify(input)))["contracts"]['Tokenmon.sol']['Tokenmon'];
+module.exports = JSON.parse(solc.compile(JSON.stringify(input)))["contracts"]['_source_contract'][_source_contract.split('.')[0]];

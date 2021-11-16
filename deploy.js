@@ -30,11 +30,11 @@ const deploy = async () => {
 		})
 		.send({
 			from: accounts[0],
-			gas: '1000000'
+			gas: '10000000'
 		});
 
 	contract.setProvider(provider);
-    console.log(abi);
+    //console.log(abi);
     console.log('Smart Contract Address:', contract.options.address);
 
 };

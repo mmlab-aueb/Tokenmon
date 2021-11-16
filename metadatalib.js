@@ -1,5 +1,6 @@
 
 // IMPORTS
+const namehash = require('eth-ens-namehash');
 const Web3 = require('web3');
 const HDWalletProvider = require('@truffle/hdwallet-provider');
 const ipfs = require('ipfs-api')({host: "localhost", port: 5001, protocol: "http"});
@@ -12,7 +13,8 @@ const CID = require('cids');
 const nftstorage_apikey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDFBMEE3ODJlZmRBRmUxRmFiMWE2NjBEYzUwZTg1MDE3YTMxODIxNDUiLCJpc3MiOiJuZnQtc3RvcmFnZSIsImlhdCI6MTYyNjg2MDk1NTgzOCwibmFtZSI6InRlc3QifQ.lySWBgIWC6YxBcKo2CKHWqODWHePpJokOMpaJuXh5d0";
 const web3storage_apikey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDM1QTMxZjNCNzQwNmE3ZTcwQUUwMDZBQTE4QjMxQ0ExZTg1MTNDRkYiLCJpc3MiOiJ3ZWIzLXN0b3JhZ2UiLCJpYXQiOjE2MjkyMjQzMzIyMzcsIm5hbWUiOiJ0b2tlbm1vbmJldGEifQ.QDe0h8ClUbpfyttqssCahs-x2sEhvRsGYbnq1ykUlMA";
 const infura_link_ropsten = 'https://ropsten.infura.io/v3/ca6249643afa4dabbed3e314bbae53ef';
-const infura_link_rinkeby = 'https://rinkeby.infura.io/3/ca6249643afa4dabbed3e314bbae53ef';
+const infura_link_rinkeby = 'https://rinkeby.infura.io/v3/ca6249643afa4dabbed3e314bbae53ef';
+const pocket_network_link_rinkeby = 'https://eth-rinkeby.gateway.pokt.network/v1/lb/614b7e9808bcf4003446cc9a';
 
 async function uploadToken(name, desc, attributes, imagepath){
 
@@ -36,15 +38,11 @@ async function uploadToken(name, desc, attributes, imagepath){
     });
     console.log('SUCCESS!');
     
-    // Get Image from nft.storage metadata:
-    const metadata_buf = await ipfs.files.cat(nft_metadata.url.slice(7));
-    const metadata = JSON.parse(metadata_buf.toString());
-    const image_cid = metadata['image'].slice(7);
-    
+    const artwork_cid = nft_metadata.data.image.href.slice(7);
     const token_metadata = {
         "name" : name,
         "description" : desc,
-        "image" : image_cid,
+        "image" : artwork_cid,
         "attributes" : attributes
     };
     const token_toStr = JSON.stringify(token_metadata);
@@ -57,7 +55,37 @@ async function uploadToken(name, desc, attributes, imagepath){
     console.log('SUCCESS! Token metadata CID; '+folder_cid);
     return folder_cid;
 
-    // test alderaan bafybeia5oz6ryh2vs6jhhiabj2k2fcgsv27nf2yccpuufxxgvswfcuiwly
+}
+
+async function createTokenBETA(tid, cidv1){
+    
+    const provider = new HDWalletProvider(
+        // 12word mnemonic for the account to deploy the contract (must have some ether)
+        'cart remind main urban turn west isolate south deal liquid into left',
+        // link to network (in this case Rinkeby test network)
+        'https://rinkeby.infura.io/v3/ca6249643afa4dabbed3e314bbae53ef'
+    );
+
+    const web3 = new Web3(provider);
+
+    let accounts = await web3.eth.getAccounts();
+    // web3.eth.ens.setSubnodeRecord(name, label, owner, resolver, ttl, [, txConfig ] [, callback]);
+    console.log('Creating ENS subdomain...');
+    let recordresult = await web3.eth.ens.setSubnodeRecord(
+        'nyxto.eth',
+        web3.utils.soliditySha3('token'+tid.toString()),
+        accounts[0],
+        '0xf6305c19e814d2a75429Fd637d01F7ee0E77d615',
+        60, // TTL seems to be redudant 
+        {
+            from: accounts[0]
+        }
+    );
+    console.log('SUCCESS!');
+
+    const upd_res = await updateToken('token'+tid.toString()+'.nyxto.eth', cidv1);
+
+    return cidv1;
 }
 
 async function claimDomain(){
@@ -67,7 +95,7 @@ async function claimDomain(){
         // 12word mnemonic for the account to deploy the contract (must have some ether)
         'cart remind main urban turn west isolate south deal liquid into left',
         // link to network (in this case test network)
-        infura_link_ropsten
+        infura_link_rinkeby
     );
 
 
@@ -78,20 +106,19 @@ async function claimDomain(){
     let recordExists = await web3.eth.ens.recordExists('tokenmon0.eth');
     let result;
     if(!recordExists){
-        try {
-            result = await web3.eth.ens.setRecord(
-                'tokenmon0.eth',
-                accounts[0],
-                "0xf6305c19e814d2a75429Fd637d01F7ee0E77d615", //default resolver for rinkeby
-                10000000, // number of seconds for the domain to live
-                {
-                    from: accounts[0]
-                },
-                (data)=>{console.log(data)}
-            );
-        } catch (e) {
-            console.log(e);
-        }
+
+        result = await web3.eth.ens.setRecord(
+            'tokenmon0.eth',
+            accounts[0],
+            "0xf6305c19e814d2a75429Fd637d01F7ee0E77d615", //default resolver for rinkeby
+            3155700, // number of seconds for the domain to live
+            {
+                from: accounts[0],
+                'chainId': 4
+            },
+            (data)=>{console.log(data)}
+        );
+    
     }
     
     return result;
@@ -153,6 +180,66 @@ async function getTokenMetadata(cid){
     return metadata;
 }
 
+// -------------------- DEMO --------------------
+uploadToken(
+    'King',
+    'Cool looking king from shrek, lorem ipsum.',
+    {
+        'emotion' : 'angry',
+        'rarity' : 'common'
+    },
+    'img/king.jpg'
+).then((cid) => {
+    createTokenBETA(7, cid).then(console.log);
+});
+
+/*
+uploadToken(
+    'Evil King',
+    'Cool looking evil king from shrek, lorem ipsum.',
+    {
+        'emotion' : 'evil',
+        'rarity' : 'rare'
+    },
+    'img/kingevil.jpg'
+).then((cid) => {
+    updateToken('token7.nyxto.eth', cid).then(console.log);
+});
+*/
+
+// ------------------ END OF DEMO ------------------
+
+/*uploadToken(
+    'Imperial Destroyer',
+    'Cool looking spaceship, lorem ipsum.',
+    {
+        'region' : 'Core Worlds',
+        'sector' : 'Alderaan Sector',
+        'system' : 'Alderaan System',
+    },
+    'img/black_hole.jpg'
+).then((cid) => {
+    createTokenBETA(1, cid).then(console.log);
+});*/
+
+/*uploadToken(
+    'Black Hole',
+    'Balck Hole description, lorem ipsum.',
+    {
+        'region' : 'Core Worlds',
+        'sector' : 'Alderaan Sector',
+        'system' : 'Alderaan System',
+        'grid-coordinates' : 'M-10',
+        'trade-routes' : 'Commenor Run',
+    },
+    'img/black_hole.jpg'
+).then((cid) => {
+    createTokenBETA(1, cid).then(console.log);
+});*/
+
+//createTokenBETA(1, cid).then(console.log);
+
+
 /*uploadToken(
     'Alderaan',
     'Alderaan, located in the Core Worlds, was a terrestrial planet covered with mountains. During the waning decades of the Galactic Republic, it was ruled by Queen Breha Organa and represented in the Galactic Senate by her husband, Senator Bail Prestor Organa.',
@@ -178,6 +265,6 @@ async function getTokenMetadata(cid){
 /*extractCIDfromENS('nyxto.eth').then((res) => {
     getTokenMetadata(res).then(console.log);
 });*/
-claimDomain().then(console.log);
+//createToken().then(console.log);
 //updateToken('nyxto.eth', 'bafybeia5oz6ryh2vs6jhhiabj2k2fcgsv27nf2yccpuufxxgvswfcuiwly').then(console.log);
 //extractCIDfromENS('nyxto.eth').then(console.log);
