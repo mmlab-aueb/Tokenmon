@@ -1,23 +1,23 @@
 
 // IMPORTS
-const namehash = require('eth-ens-namehash');
 const Web3 = require('web3');
 const HDWalletProvider = require('@truffle/hdwallet-provider');
-const ipfs = require('ipfs-api')({host: "localhost", port: 5001, protocol: "http"});
 const fs = require('fs');
 const {Web3Storage} = require('web3.storage');
 const {NFTStorage, File} = require('nft.storage');
+// This import is required for converting the IPFS v1 cid to v0.
 const CID = require('cids');
 
+// This import is required to get the bytecode/abi of the smart contract.
 const tokenmon = require('./Tokenmon');
 
-// CONSTANTS
+// CONSTANTS - API KEYS
 const nftstorage_apikey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDFBMEE3ODJlZmRBRmUxRmFiMWE2NjBEYzUwZTg1MDE3YTMxODIxNDUiLCJpc3MiOiJuZnQtc3RvcmFnZSIsImlhdCI6MTYyNjg2MDk1NTgzOCwibmFtZSI6InRlc3QifQ.lySWBgIWC6YxBcKo2CKHWqODWHePpJokOMpaJuXh5d0";
 const web3storage_apikey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDM1QTMxZjNCNzQwNmE3ZTcwQUUwMDZBQTE4QjMxQ0ExZTg1MTNDRkYiLCJpc3MiOiJ3ZWIzLXN0b3JhZ2UiLCJpYXQiOjE2MjkyMjQzMzIyMzcsIm5hbWUiOiJ0b2tlbm1vbmJldGEifQ.QDe0h8ClUbpfyttqssCahs-x2sEhvRsGYbnq1ykUlMA";
 const infura_link_ropsten = 'https://ropsten.infura.io/v3/ca6249643afa4dabbed3e314bbae53ef';
 const infura_link_rinkeby = 'https://rinkeby.infura.io/v3/ca6249643afa4dabbed3e314bbae53ef';
-const pocket_network_link_rinkeby = 'https://eth-rinkeby.gateway.pokt.network/v1/lb/614b7e9808bcf4003446cc9a';
 
+// Prepare the Web3 provider. The HDWalletProvider has built in support for MetaMask.
 const provider = new HDWalletProvider(
     // 12word mnemonic for the account to deploy the contract (must have some ether)
     'cart remind main urban turn west isolate south deal liquid into left',
@@ -25,9 +25,19 @@ const provider = new HDWalletProvider(
     'https://rinkeby.infura.io/v3/ca6249643afa4dabbed3e314bbae53ef'
 );
 
+//Init web3.
 const web3 = new Web3(provider);
 
 
+/**
+ * Uploads a token on IPFS; artwork to nft.storage and metadata to web3.storage.
+ * 
+ * @param {string} name - the name of the token
+ * @param {string} desc - the description of the token
+ * @param {JSON} attributes - the attributes of the token
+ * @param {string} imagepath - the local path of the image artwork
+ * @returns {Promise} cid of the token's metadata folder
+ */
 async function uploadToken(name, desc, attributes, imagepath){
 
     // Upload to nft.storage
@@ -68,13 +78,19 @@ async function uploadToken(name, desc, attributes, imagepath){
     return folder_cid;
 
 }
+/**
+ * 
+ * Creates a unique static ENS address for the token.
+ * 
+ * @param {string} tid - the most recent NOT USED token id in order to be used. (stored in the smart contarct)
+ * @param {string} cidv1 - the v1 cid of the token's metadata folder
+ * @returns {Promise} the ENS address of the token that has been created
+ */
 
-async function createTokenBETA(tid, cidv1){
-    
+async function createToken(tid, cidv1){
     
     let accounts = await web3.eth.getAccounts();
 
-    // web3.eth.ens.setSubnodeRecord(name, label, owner, resolver, ttl, [, txConfig ] [, callback]);
     console.log('Creating ENS subdomain...');
     
     let _domain = 'nyxto.eth';
@@ -98,36 +114,17 @@ async function createTokenBETA(tid, cidv1){
     return link;
 }
 
-async function claimDomain(){
-
-    let accounts = await web3.eth.getAccounts();
-
-
-    console.log('Attempting to claim \'tokenmon0.eth\'...');
-    let recordExists = await web3.eth.ens.recordExists('tokenmon0.eth');
-    let result;
-    if(!recordExists){
-
-        result = await web3.eth.ens.setRecord(
-            'tokenmon0.eth',
-            accounts[0],
-            "0xf6305c19e814d2a75429Fd637d01F7ee0E77d615", //default resolver for rinkeby
-            3155700, // number of seconds for the domain to live
-            {
-                from: accounts[0],
-                'chainId': 4
-            },
-            (data)=>{console.log(data)}
-        );
-    
-    }
-    
-    return result;
-}
+/**
+ * 
+ * Updates the content hash of a token's ENS address to the latest cid.
+ * 
+ * @param {string} ensdomain - the ENS address of the token
+ * @param {string} cidv1 - the new v1 cid of the token's folder to update to
+ * @returns {Promise} result of the transaction from the interaction with ENS
+ */
 
 async function updateToken(ensdomain, cidv1){
     let accounts = await web3.eth.getAccounts();
-
     
     const cidv0 = (new CID(cidv1)).toV0().toString();
     
@@ -143,62 +140,12 @@ async function updateToken(ensdomain, cidv1){
     return result;
 }
 
-async function extractCIDfromENS(address) {
-    let accounts = await web3.eth.getAccounts();
 
-    const result = await web3.eth.ens.getContenthash(address);
-    return result['decoded'];
-}
 
-async function getTokenMetadata(cid){
-    let accounts = await web3.eth.getAccounts();
-
-    // Get the linker file pinned on web3.storage
-    const metadata_res = await ipfs.files.cat(cid+"/metadata.json");
-    const metadata = JSON.parse(metadata_res.toString());
-
-    // Get the metadata file pinned on nft.storage
-    /*const metadata_res = await ipfs.files.cat(metadata_cid);
-    const metadata = metadata_res.toString();
-
-    // Download the nft image.
-    const image_link = metadata['image'];
-    const image_cid = image_link.slice(7);
-    const filename = image_cid.split('/')[1].trim(".");
-    imagebuff = await ipfs.files.cat(image_cid);
-    fs.createWriteStream(filename).write(res);*/
-
-    return metadata;
-}
-
-// -------------------- DEMO --------------------
-/*uploadToken(
-    'King',
-    'Cool looking king from shrek, lorem ipsum.',
-    {
-        'emotion' : 'angry',
-        'rarity' : 'common'
-    },
-    'img/king.jpg'
-).then((cid) => {
-    createTokenBETA(7, cid).then(console.log);
-});*/
-
-/*
-uploadToken(
-    'Evil King',
-    'Cool looking evil king from shrek, lorem ipsum.',
-    {
-        'emotion' : 'evil',
-        'rarity' : 'rare'
-    },
-    'img/kingevil.jpg'
-).then((cid) => {
-    updateToken('token7.nyxto.eth', cid).then(console.log);
-});
-*/
-
-// ------------------ END OF DEMO ------------------
+/**
+ * upladDemo is a demo on how the functions are supposed to be used in order for the system to operate properly
+ * @returns {Promise}
+ */
 async function uploadDemo() {
     let accounts = await web3.eth.getAccounts();
 
@@ -214,13 +161,19 @@ async function uploadDemo() {
     );
     
     const tid = await tokenmon.methods.getIdcounter().call();
-    const link = await createTokenBETA(tid, cid);
+    const link = await createToken(tid, cid);
     const res = await tokenmon.methods.createToken(link).send({
         from: accounts[0]
     });
     console.log(res);
 }
 
+
+/**
+ * updateDemo is a demo on how the functions are supposed to be used in order for the system to operate properly.
+ * 
+ * @returns {Promise}
+ */
 async function updateDemo(){
 
     let accounts = await web3.eth.getAccounts();
@@ -241,69 +194,9 @@ async function updateDemo(){
         },
         'img/alderaan.jpg'
     );
-    const res = await updateToken('atoken1.nyxto.eth', cid);
+    const res = await updateToken('atoken2.nyxto.eth', cid);
     console.log(res);
 }
 
 //uploadDemo();
 //updateDemo();
-
-/*uploadToken(
-    'Imperial Destroyer',
-    'Cool looking spaceship, lorem ipsum.',
-    {
-        'region' : 'Core Worlds',
-        'sector' : 'Alderaan Sector',
-        'system' : 'Alderaan System',
-    },
-    'img/black_hole.jpg'
-).then((cid) => {
-    createTokenBETA(1, cid).then(console.log);
-});*/
-
-/*uploadToken(
-    'Black Hole',
-    'Balck Hole description, lorem ipsum.',
-    {
-        'region' : 'Core Worlds',
-        'sector' : 'Alderaan Sector',
-        'system' : 'Alderaan System',
-        'grid-coordinates' : 'M-10',
-        'trade-routes' : 'Commenor Run',
-    },
-    'img/black_hole.jpg'
-).then((cid) => {
-    createTokenBETA(1, cid).then(console.log);
-});*/
-
-//createTokenBETA(1, cid).then(console.log);
-
-
-/*uploadToken(
-    'Alderaan',
-    'Alderaan, located in the Core Worlds, was a terrestrial planet covered with mountains. During the waning decades of the Galactic Republic, it was ruled by Queen Breha Organa and represented in the Galactic Senate by her husband, Senator Bail Prestor Organa.',
-    {
-        'region' : 'Core Worlds',
-        'sector' : 'Alderaan Sector',
-        'system' : 'Alderaan System',
-        'suns' : "1",
-        'moons' : "0",
-        'grid-coordinates' : 'M-10',
-        'trade-routes' : 'Commenor Run',
-        'rotation-period' : '18SH',
-        'orbital-period' : '364SD'
-    },
-    'img/alderaan.jpg'
-).then((cid) => {
-    updateToken('nyxto.eth', cid)
-});*/
-
-//extractCIDfromENS('nyxto.eth').then(console.log);
-//getTokenMetadata('QmQKfKnqt6rg1ZNzniz4vsrjHUeX93fvPzscMSZdi7uJJ1').then(console.log);
-
-/*extractCIDfromENS('nyxto.eth').then((res) => {
-    getTokenMetadata(res).then(console.log);
-});*/
-//createToken().then(console.log);
-//updateToken('nyxto.eth', 'bafybeia5oz6ryh2vs6jhhiabj2k2fcgsv27nf2yccpuufxxgvswfcuiwly').then(console.log);
-//extractCIDfromENS('nyxto.eth').then(console.log);

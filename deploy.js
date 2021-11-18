@@ -1,4 +1,6 @@
-// Source of ether (unlock account)
+/**
+ * This file is for the deployment of the smart contract on an Ethereum TEST network.
+ */
 const HDWalletProvider = require('truffle-hdwallet-provider');
 
 const Web3 = require('web3');

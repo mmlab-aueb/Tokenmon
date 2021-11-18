@@ -1,3 +1,8 @@
+/**
+ * This file is about the compilation of the smart contract.
+ */
+
+
 // Path module (preinstalled in npm)
 // cross-platform support for paths (macOS, Windows, linux, ...)
 const path = require('path');
