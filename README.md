@@ -16,4 +16,5 @@
 - **compile.js** - the compile script for the core smart contract
 - **deploy.js** -- the script responsible for deploying the core smart contract on the Ethereum *TEST* network
 - **Tokenmon.js** - the smart contract module 
-- **cryptography.js** - the cryptography functions used
+- **cryptography.js** - the cryptography module implementing Shamir's threshold secret sharing scheme
+

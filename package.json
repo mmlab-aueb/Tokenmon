@@ -19,6 +19,7 @@
     "eth-ens-namehash": "^2.0.8",
     "ipfs-api": "^26.1.2",
     "nft.storage": "^3.2.0",
+    "secrets.js-grempe": "^2.0.0",
     "solc": "^0.8.7-fixed",
     "truffle-hdwallet-provider": "^1.0.17",
     "web3": "^1.5.2",

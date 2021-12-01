@@ -8,6 +8,8 @@ const {NFTStorage, File} = require('nft.storage');
 // This import is required for converting the IPFS v1 cid to v0.
 const CID = require('cids');
 
+const cpt = require('./cryptography');
+
 // This import is required to get the bytecode/abi of the smart contract.
 const tokenmon = require('./Tokenmon');
 
@@ -38,14 +40,15 @@ const web3 = new Web3(provider);
  * @param {string} imagepath - the local path of the image artwork
  * @returns {Promise} cid of the token's metadata folder
  */
-async function uploadToken(name, desc, attributes, imagepath){
+async function uploadToken(name, desc, attributes, imagepath, coverpath){
 
     // Upload to nft.storage
-    console.log('Uploading artwork on nft.storage...');
+    
     const client = new NFTStorage({token: nftstorage_apikey});
-    let content = fs.readFileSync(imagepath);
+    console.log('Uploading cover of artwork on nft.storage...');
+    let content = fs.readFileSync(coverpath);
 
-    const extension = imagepath.split('.')[1];
+    const extension = coverpath.split('.')[1];
     const nft_metadata = await client.store({
         name: "name",
         description: 'desc',
@@ -59,12 +62,33 @@ async function uploadToken(name, desc, attributes, imagepath){
         )
     });
     console.log('SUCCESS!');
+
+    console.log('Uploading encrypted artwork on nft.storage...');
+    let encr_content = fs.readFileSync(imagepath);
+
+    const encr_extension_array = imagepath.split('.');
+    const encr_extension = encr_extension_array[encr_extension_array.length - 2]+'.'+encr_extension_array[encr_extension_array.length - 1];
+    const encr_metadata = await client.store({
+        name: "name",
+        description: 'desc',
+        attributes: 'null',
+        image: new File(
+            [
+                encr_content
+            ],
+            'artwork.'+encr_extension,
+            { type: 'image/'+encr_extension }
+        )
+    });
+    console.log('SUCCESS!');
     
-    const artwork_cid = nft_metadata.data.image.href.slice(7);
+    const cover_cid = nft_metadata.data.image.href.slice(7);
+    const artwork_cid = encr_metadata.data.image.href.slice(7);
     const token_metadata = {
         "name" : name,
         "description" : desc,
         "image" : artwork_cid,
+        "cover" : cover_cid,
         "attributes" : attributes
     };
     const token_toStr = JSON.stringify(token_metadata);
@@ -148,6 +172,7 @@ async function updateToken(ensdomain, cidv1){
  */
 async function uploadDemo() {
     let accounts = await web3.eth.getAccounts();
+    const tid = await tokenmon.methods.getIdcounter().call();
 
     const cid = await uploadToken(
         'Imperial Destroyer',
@@ -160,7 +185,6 @@ async function uploadDemo() {
         'img/black_hole.jpg'
     );
     
-    const tid = await tokenmon.methods.getIdcounter().call();
     const link = await createToken(tid, cid);
     const res = await tokenmon.methods.createToken(link).send({
         from: accounts[0]
@@ -198,5 +222,45 @@ async function updateDemo(){
     console.log(res);
 }
 
-//uploadDemo();
-//updateDemo();
+async function cryptographyDemo(){
+    let accounts = await web3.eth.getAccounts();
+    const tid = await tokenmon.methods.getIdcounter().call();
+
+    var artworkpath = cpt.encrypt('atoken'+tid.toString()+".nyxto.eth", 'img/nanopodio.jpg');
+    const cid = await uploadToken(
+        'Fernando Alonso',
+        'Fernando Alonso, two-time formula one world champion. Goat.',
+        {
+            'racepace' : 'outstanding',
+            'wdc' : '2'
+        },
+        artworkpath,
+        'img/nanopodio_cover.jpg'
+    );
+
+    const link = await createToken(tid, cid);
+    const res = await tokenmon.methods.createToken(link).send({
+        from: accounts[0]
+    });
+    
+    console.log(res);
+}
+
+async function cryptographyUpdateDemo(){
+
+    var artworkpath = cpt.encrypt("atoken7.nyxto.eth", 'img/sebhm.jpg');
+    const cid = await uploadToken(
+        'Sebastian Vettel',
+        'Sebastian Vettel, four-time formula one world champion.',
+        {
+            'racepace' : 'excellent',
+            'wdc' : '4'
+        },
+        artworkpath,
+        'img/sebhm_cover.jpg'
+    );
+
+    const res = await updateToken('atoken7.nyxto.eth', cid);
+    
+    console.log(res);
+}
