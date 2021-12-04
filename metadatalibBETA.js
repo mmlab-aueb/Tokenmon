@@ -38,6 +38,7 @@ const web3 = new Web3(provider);
  * @param {string} desc - the description of the token
  * @param {JSON} attributes - the attributes of the token
  * @param {string} imagepath - the local path of the image artwork
+ * @param {string} coverpath - the local path of the cover of the artwork
  * @returns {Promise} cid of the token's metadata folder
  */
 async function uploadToken(name, desc, attributes, imagepath, coverpath){
