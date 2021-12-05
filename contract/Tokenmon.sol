@@ -306,13 +306,20 @@ contract ERC721Metadata is ERC721Token {
         setTokenUri(_tokenId, uri);
     }
 }
-// smart contract address rinkeby: 0xd0d1497F7478e07ED49154602F865eC265d4863c
+
 contract Tokenmon is ERC721Metadata {
 
     uint256 private idcounter;
+    //mapping from token id to seal
+    mapping (uint256 => bool) internal idToSealBroken;
+    event BreakSeal(address indexed _from, uint256 indexed _tid);
 
     constructor () ERC721Metadata("Tokenmon", "TKM") {
         idcounter = 0;
+    }
+
+    function getNextAvailableId() public view returns (uint256) {
+        return idcounter+1;
     }
     
     function getIdcounter() public view returns (uint256) {
@@ -321,25 +328,41 @@ contract Tokenmon is ERC721Metadata {
     }
 
     function createToken(string memory _tokenURI) public returns (uint256) {
+        idcounter++;
         uint256 currId = idcounter;
         mint(msg.sender, currId, _tokenURI);
-        idcounter++;
+        idToSealBroken[currId] = false;
         return currId;
     }
     
     function evolveToken(uint256 _tid, string memory _newTokenURI) public returns (uint256) {
         setTokenUri(_tid, _newTokenURI);
+        idToSealBroken[_tid] = false;
         return _tid;
     }
     
     function fuseTokens(uint256 _tid1, uint256 _tid2, string memory _unifiedTokenURI) public returns (uint256) {
         // TO DO: IMPLEMENT
+        idcounter++;
         uint256 currId = idcounter;
         super.mint(msg.sender, currId, _unifiedTokenURI);
         super.burn(_tid1);
         super.burn(_tid2);
-        idcounter++;
+        idToSealBroken[currId] = false;
         return currId;
     }
     
+    function breakSeal(uint256 _tid) public returns (bool) {
+        require(idToOwner[_tid] == msg.sender);
+        require(idToSealBroken[_tid] == false);   
+        idToSealBroken[_tid] = true;
+        emit BreakSeal(msg.sender, _tid);
+        return idToSealBroken[_tid];
+    }
+
+    function isBroken(uint256 _tid) public view returns (bool) {
+        require(idToOwner[_tid] != address(0));
+        return idToSealBroken[_tid];
+    }
+
 } 

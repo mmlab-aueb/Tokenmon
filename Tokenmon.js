@@ -12,4 +12,4 @@ const interface = require('./compile');
 const abi = interface['abi'];
 const bytecode = interface['evm']['bytecode']['object'];
 
-module.exports = new web3.eth.Contract(abi,'0xd0d1497F7478e07ED49154602F865eC265d4863c');
+module.exports = new web3.eth.Contract(abi,'0x1a4325144f643B630419C9ee11D883D6885b9FBf');

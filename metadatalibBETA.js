@@ -30,7 +30,6 @@ const provider = new HDWalletProvider(
 //Init web3.
 const web3 = new Web3(provider);
 
-
 /**
  * Uploads a token on IPFS; artwork to nft.storage and metadata to web3.storage.
  * 
@@ -119,7 +118,7 @@ async function createToken(tid, cidv1){
     console.log('Creating ENS subdomain...');
     
     let _domain = 'nyxto.eth';
-    let _subdomain = 'atoken'    
+    let _subdomain = 'abetatok'    
     let link = _subdomain + tid + '.' + _domain;
 
     let recordresult = await web3.eth.ens.setSubnodeRecord(
@@ -164,70 +163,50 @@ async function updateToken(ensdomain, cidv1){
     console.log('SUCCESS!');
     return result;
 }
-
-
-
 /**
- * upladDemo is a demo on how the functions are supposed to be used in order for the system to operate properly
- * @returns {Promise}
+ * Function for decrypting the token's encrypted artwork.
+ * @param {string} tokenDomain The domain of the token.
+ * @param {string} share1 One of the 3 keys (company/artist/owner)
+ * @param {string} share2 Another one of the 3 keys (company/artist/owner) (must be different from share1)
  */
-async function uploadDemo() {
+async function decryptToken(tokenDomain, share1, share2){
     let accounts = await web3.eth.getAccounts();
-    const tid = await tokenmon.methods.getIdcounter().call();
+    console.log("MAKE SURE THE IPFS DAEMON IS RUNNING.");
+    const ipfs = require('ipfs-api')({host: "localhost", port: 5001, protocol: "http"});
 
-    const cid = await uploadToken(
-        'Imperial Destroyer',
-        'Cool looking spaceship, lorem ipsum.',
-        {
-            'region' : 'Core Worlds',
-            'sector' : 'Alderaan Sector',
-            'system' : 'Alderaan System',
-        },
-        'img/black_hole.jpg'
-    );
+    console.log("Getting the content hash from \'"+tokenDomain+"\' ...");
+    const hashobj = await web3.eth.ens.getContenthash(tokenDomain);
+    console.log("SUCCESS!");
+    const content_hash = hashobj['decoded'];
+    // buffer object (ipfsobj)
+    console.log("Getting token metadata...");
+    const ipfsobj = await ipfs.files.cat(content_hash+"/metadata.json");
+    const metadata = JSON.parse(ipfsobj.toString());
+    console.log("SUCCESS!");
     
-    const link = await createToken(tid, cid);
-    const res = await tokenmon.methods.createToken(link).send({
-        from: accounts[0]
-    });
-    console.log(res);
+    // Get encrypted image:
+    console.log("Downloading the encrypted artwork...");
+    const img_obj = await ipfs.files.cat(metadata["image"]);
+    console.log("SUCCESS!");
+    const enc_path = "temp/"+metadata["image"].split("/")[1];
+    // Write encrypted image on disk
+    console.log("Saving file on disk...");
+    fs.createWriteStream(enc_path).write(img_obj);
+    console.log("SUCCESS!");
+
+    // Decrypt image:
+    console.log("Decrypting artwork...");
+    cpt.decrypt(enc_path, share1, share2);
+    console.log("SUCCESS! Decrypted file saved in 'temp' folder...");
 }
 
-
-/**
- * updateDemo is a demo on how the functions are supposed to be used in order for the system to operate properly.
- * 
- * @returns {Promise}
- */
-async function updateDemo(){
-
-    let accounts = await web3.eth.getAccounts();
-
-    const cid = await uploadToken(
-        'Alderaan',
-        'Alderaan, located in the Core Worlds, was a terrestrial planet covered with mountains. During the waning decades of the Galactic Republic, it was ruled by Queen Breha Organa and represented in the Galactic Senate by her husband, Senator Bail Prestor Organa.',
-        {
-            'region' : 'Core Worlds',
-            'sector' : 'Alderaan Sector',
-            'system' : 'Alderaan System',
-            'suns' : "1",
-            'moons' : "0",
-            'grid-coordinates' : 'M-10',
-            'trade-routes' : 'Commenor Run',
-            'rotation-period' : '18SH',
-            'orbital-period' : '364SD'
-        },
-        'img/alderaan.jpg'
-    );
-    const res = await updateToken('atoken2.nyxto.eth', cid);
-    console.log(res);
-}
+// -------------------- DEMO --------------------
 
 async function cryptographyDemo(){
     let accounts = await web3.eth.getAccounts();
-    const tid = await tokenmon.methods.getIdcounter().call();
+    const tid = await tokenmon.methods.getNextAvailableId().call();
 
-    var artworkpath = cpt.encrypt('atoken'+tid.toString()+".nyxto.eth", 'img/nanopodio.jpg');
+    var artworkpath = cpt.encrypt('abetatok'+tid.toString()+".nyxto.eth", 'img/nanopodio.jpg');
     const cid = await uploadToken(
         'Fernando Alonso',
         'Fernando Alonso, two-time formula one world champion. Goat.',
@@ -249,7 +228,7 @@ async function cryptographyDemo(){
 
 async function cryptographyUpdateDemo(){
 
-    var artworkpath = cpt.encrypt("atoken7.nyxto.eth", 'img/sebhm.jpg');
+    var artworkpath = cpt.encrypt("abetatok1.nyxto.eth", 'img/sebhm.jpg');
     const cid = await uploadToken(
         'Sebastian Vettel',
         'Sebastian Vettel, four-time formula one world champion.',
@@ -261,7 +240,19 @@ async function cryptographyUpdateDemo(){
         'img/sebhm_cover.jpg'
     );
 
-    const res = await updateToken('atoken7.nyxto.eth', cid);
+    const res = await updateToken('abetatok1.nyxto.eth', cid);
     
     console.log(res);
+}
+
+async function breakSealDemo(){
+    let accounts = await web3.eth.getAccounts();
+
+    const sealIsBroken = await tokenmon.methods.isBroken("1").call();
+    if(!sealIsBroken){
+        const res = await tokenmon.methods.breakSeal("1").send({
+            from: accounts[0]
+        });
+    }   
+    decryptToken("abetatok1.nyxto.eth", cpt.getKeys("abetatok1.nyxto.eth")["owner"], cpt.getKeys("abetatok1.nyxto.eth")["company"]);
 }
