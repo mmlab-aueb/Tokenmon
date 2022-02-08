@@ -1,0 +1,16 @@
+[obj ob] 4168
+[obj ob] 1743
+[obj ob] 1659
+[obj ob] 1449
+[obj ob] 1515
+[obj ob] 1491
+[obj ob] 1477
+[obj ob] 1485
+[obj ob] 1495
+[obj ob] 1494
+[obj ob] 1496
+[obj ob] 1470
+[obj ob] 1449
+[obj ob] 1528
+[obj ob] 1490
+[obj ob] 1636

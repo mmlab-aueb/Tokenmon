@@ -89,6 +89,7 @@ async function uploadToken(name, desc, attributes, imagepath, coverpath){
         "description" : desc,
         "image" : artwork_cid,
         "cover" : cover_cid,
+        "seal" : "intact",
         "attributes" : attributes
     };
     const token_toStr = JSON.stringify(token_metadata);
@@ -102,6 +103,7 @@ async function uploadToken(name, desc, attributes, imagepath, coverpath){
     return folder_cid;
 
 }
+
 /**
  * 
  * Creates a unique static ENS address for the token.
@@ -110,7 +112,6 @@ async function uploadToken(name, desc, attributes, imagepath, coverpath){
  * @param {string} cidv1 - the v1 cid of the token's metadata folder
  * @returns {Promise} the ENS address of the token that has been created
  */
-
 async function createToken(tid, cidv1){
     
     let accounts = await web3.eth.getAccounts();
@@ -118,9 +119,10 @@ async function createToken(tid, cidv1){
     console.log('Creating ENS subdomain...');
     
     let _domain = 'nyxto.eth';
-    let _subdomain = 'abetatok'    
+    let _subdomain = 'finaltok'    
     let link = _subdomain + tid + '.' + _domain;
 
+    // timer start
     let recordresult = await web3.eth.ens.setSubnodeRecord(
         _domain,
         web3.utils.soliditySha3(_subdomain+tid),
@@ -146,7 +148,6 @@ async function createToken(tid, cidv1){
  * @param {string} cidv1 - the new v1 cid of the token's folder to update to
  * @returns {Promise} result of the transaction from the interaction with ENS
  */
-
 async function updateToken(ensdomain, cidv1){
     let accounts = await web3.eth.getAccounts();
     
@@ -163,6 +164,7 @@ async function updateToken(ensdomain, cidv1){
     console.log('SUCCESS!');
     return result;
 }
+
 /**
  * Function for decrypting the token's encrypted artwork.
  * @param {string} tokenDomain The domain of the token.
@@ -181,7 +183,7 @@ async function decryptToken(tokenDomain, share1, share2){
     // buffer object (ipfsobj)
     console.log("Getting token metadata...");
     const ipfsobj = await ipfs.files.cat(content_hash+"/metadata.json");
-    const metadata = JSON.parse(ipfsobj.toString());
+    let metadata = JSON.parse(ipfsobj.toString());
     console.log("SUCCESS!");
     
     // Get encrypted image:
@@ -198,6 +200,20 @@ async function decryptToken(tokenDomain, share1, share2){
     console.log("Decrypting artwork...");
     cpt.decrypt(enc_path, share1, share2);
     console.log("SUCCESS! Decrypted file saved in 'temp' folder...");
+
+    // Updating token metadta:
+    metadata['seal'] = 'broken';
+    const newMetadata_toStr = JSON.stringify(metadata);
+
+    //Upload updated metadata to web3.storage
+    console.log('Uploading UPDATED token metadata on web3.storage...');
+    const file = new File([newMetadata_toStr], "metadata.json", {type: "text/plain"});
+    const storage = new Web3Storage({ token: web3storage_apikey });
+    const folder_cid = await storage.put([file]);
+    console.log('SUCCESS! Token metadata CID; '+folder_cid);
+    let transaction_res = await updateToken(tokenDomain, folder_cid);
+    return transaction_res;
+
 }
 
 // -------------------- DEMO --------------------
@@ -206,7 +222,7 @@ async function cryptographyDemo(){
     let accounts = await web3.eth.getAccounts();
     const tid = await tokenmon.methods.getNextAvailableId().call();
 
-    var artworkpath = cpt.encrypt('abetatok'+tid.toString()+".nyxto.eth", 'img/nanopodio.jpg');
+    var artworkpath = cpt.encrypt('finaltok'+tid.toString()+".nyxto.eth", 'img/nanopodio.jpg');
     const cid = await uploadToken(
         'Fernando Alonso',
         'Fernando Alonso, two-time formula one world champion. Goat.',
@@ -228,7 +244,7 @@ async function cryptographyDemo(){
 
 async function cryptographyUpdateDemo(){
 
-    var artworkpath = cpt.encrypt("abetatok1.nyxto.eth", 'img/sebhm.jpg');
+    var artworkpath = cpt.encrypt("finaltok53.nyxto.eth", 'img/sebhm.jpg');
     const cid = await uploadToken(
         'Sebastian Vettel',
         'Sebastian Vettel, four-time formula one world champion.',
@@ -240,7 +256,7 @@ async function cryptographyUpdateDemo(){
         'img/sebhm_cover.jpg'
     );
 
-    const res = await updateToken('abetatok1.nyxto.eth', cid);
+    const res = await updateToken('finaltok53.nyxto.eth', cid);
     
     console.log(res);
 }
@@ -248,11 +264,17 @@ async function cryptographyUpdateDemo(){
 async function breakSealDemo(){
     let accounts = await web3.eth.getAccounts();
 
-    const sealIsBroken = await tokenmon.methods.isBroken("1").call();
+    const sealIsBroken = await tokenmon.methods.isBroken("53").call();
     if(!sealIsBroken){
-        const res = await tokenmon.methods.breakSeal("1").send({
+        decryptToken("finaltok53.nyxto.eth", cpt.getKeys("finaltok53.nyxto.eth")["owner"], cpt.getKeys("finaltok53.nyxto.eth")["company"]);
+        const res = await tokenmon.methods.breakSeal("53").send({
             from: accounts[0]
         });
+        console.log('Done!');
     }   
-    decryptToken("abetatok1.nyxto.eth", cpt.getKeys("abetatok1.nyxto.eth")["owner"], cpt.getKeys("abetatok1.nyxto.eth")["company"]);
+    
 }
+
+breakSealDemo().then((res) => {
+    console.log(res);
+});

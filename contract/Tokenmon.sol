@@ -335,12 +335,6 @@ contract Tokenmon is ERC721Metadata {
         return currId;
     }
     
-    function evolveToken(uint256 _tid, string memory _newTokenURI) public returns (uint256) {
-        setTokenUri(_tid, _newTokenURI);
-        idToSealBroken[_tid] = false;
-        return _tid;
-    }
-    
     function fuseTokens(uint256 _tid1, uint256 _tid2, string memory _unifiedTokenURI) public returns (uint256) {
         // TO DO: IMPLEMENT
         idcounter++;
