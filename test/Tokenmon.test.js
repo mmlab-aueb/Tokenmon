@@ -144,10 +144,10 @@ async function timeTest6(){
     let output = "error 0";
     try {
       let start = Date.now();
-      let _subdomain = "timetest" + i;
+      let _subdomain = "gastest" + i;
       let recordresult = await web3.eth.ens.setSubnodeRecord(
         "nyxto.eth",
-        web3.utils.soliditySha3(_subdomain),
+        _subdomain,
         accounts[0],
         '0xf6305c19e814d2a75429Fd637d01F7ee0E77d615',
         60, // TTL seems to be redudant 
@@ -158,10 +158,12 @@ async function timeTest6(){
       duration = Date.now() - start;
       output = "[obj ob]" + " " + duration;
       console.log(output);
+      console.log("gas: " + recordresult['gasUsed']);
+      console.log(_subdomain+".nyxto.eth"+" claimed.");
     } catch (error) {
       console.log('Error!');
     }
-    fs.appendFileSync('./test/setSubnodeRecord_time.txt', output+"\n");
+    fs.appendFileSync('./setSubnodeRecord_time.txt', output+"\n");
     i = i + 1;
 
   }
@@ -171,13 +173,13 @@ async function timeTest6(){
 async function timeTest7(){
   const accounts = await web3.eth.getAccounts();
   let i = 1;
-  while(i <= 16){
+  while(i <= 4){
     console.log("Test No. "+i+"...");
     let duration = 0;
     let output = "error 0";
     try {
       let start = Date.now();
-      let _subdomain = "timetest" + i;
+      let _subdomain = "gastest" + i;
       const result = await web3.eth.ens.setContenthash(
         _subdomain+".nyxto.eth", 
         "ipfs://QmbrFoaRTcuCZxRKUhssFZozYA66CxnKF2k5GY5d2fNuZW",
@@ -188,10 +190,11 @@ async function timeTest7(){
       duration = Date.now() - start;
       output = "[obj ob]" + " " + duration;
       console.log(output);
+      console.log("gas: " + result['gasUsed']);
     } catch (error) {
       console.log('Error!');
     }
-    fs.appendFileSync('./test/setContentHash_time.txt', output+"\n");
+    fs.appendFileSync('./setContentHash_time.txt', output+"\n");
     i = i + 1;
 
   }
@@ -201,21 +204,22 @@ async function timeTest7(){
 async function timeTest8(){
   const accounts = await web3.eth.getAccounts();
   let i = 1;
-  while(i <= 16){
+  while(i <= 4){
     console.log("Test No. "+i+"...");
     let duration = 0;
     let output = "error 0";
     try {
       let start = Date.now();
-      let _subdomain = "timetest" + i;
+      let _subdomain = "gastest" + i;
       const hashobj = await web3.eth.ens.getContenthash(_subdomain+".nyxto.eth");
       duration = Date.now() - start;
       output = "[obj ob]" + " " + duration;
       console.log(output);
+      console.log("gas: " + hashobj['gasUsed']);
     } catch (error) {
       console.log('Error!');
     }
-    fs.appendFileSync('./test/getContentHash_time.txt', output+"\n");
+    fs.appendFileSync('./getContentHash_time.txt', output+"\n");
     i = i + 1;
 
   }
@@ -259,8 +263,8 @@ async function costTest(){
 //timeTest3();
 //timeTest4();
 //timeTest5();
-//timeTest6();
-//timeTest7();
-//timeTest8();
+//timeTest6().then((res) => {console.log(res);});
+//timeTest7().then((res) => {console.log(res);});
+timeTest8().then((res) => {console.log(res);});
 //test();
-costTest().then((res) => {console.log(res);});
+//costTest();
