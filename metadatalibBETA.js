@@ -185,7 +185,6 @@ async function decryptToken(tokenDomain, share1, share2){
     const ipfsobj = await ipfs.files.cat(content_hash+"/metadata.json");
     let metadata = JSON.parse(ipfsobj.toString());
     console.log("SUCCESS!");
-    
     // Get encrypted image:
     console.log("Downloading the encrypted artwork...");
     const img_obj = await ipfs.files.cat(metadata["image"]);

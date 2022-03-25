@@ -73,8 +73,8 @@ function encrypt(tokenDomain, source){
 function decrypt(source, share1, share2){
     const shares = [share1, share2];
     const key = secrets.combine(shares);
-
     const cipher = crypto.createDecipher('aes-256-cbc', key);
+
     const input = fs.createReadStream(source);
     var new_source_array = source.replace('.enc','');
     var output = fs.createWriteStream(new_source_array);

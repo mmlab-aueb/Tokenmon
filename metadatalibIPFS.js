@@ -58,11 +58,14 @@ async function uploadToken_IPFSify(ipfs, name, desc, attributes, imagepath, cove
     const artwork_cid = await ipfs.add(encr_content);
     console.log('SUCCESS!');
     
+    const artwork_format = imagepath.split(".")[1];
+
     const token_metadata = {
         "name" : name,
         "description" : desc,
         "image" : artwork_cid.path,
         "cover" : cover_cid.path,
+        "format": artwork_format,
         "attributes" : attributes
     };
     const token_toStr = JSON.stringify(token_metadata);
@@ -86,19 +89,11 @@ async function uploadToken_IPFSify(ipfs, name, desc, attributes, imagepath, cove
  * @returns {Promise} the ENS address of the token that has been created
  */
 
-async function createToken_IPFSify(tid, cidv1){
-    
-    let accounts = await web3.eth.getAccounts();
-
-    console.log('Creating ipns address...');
-    const subdomain = "tokentestIPFS";
-    const link = subdomain + tid.toString();
-
-    console.log('SUCCESS!');
-
-    const upd_res = await updateToken_IPFSify(link, cidv1);
-
-    return link;
+async function createToken_IPFSify(ipfs, tid, cidv1){
+  console.log('Creating ipns address...');
+  const ipns_addr = await updateToken_IPFSify(ipfs, tid.toString(), cidv1);
+  console.log("DONE creating IPNS address!")
+  return ipns_addr;
 }
 
 /**
@@ -110,19 +105,9 @@ async function createToken_IPFSify(tid, cidv1){
  * @returns {Promise} result of the transaction from the interaction with ENS
  */
 
-async function updateToken_IPFSify(ensdomain, cid){
-    let accounts = await web3.eth.getAccounts();
-    
-    console.log("Updating \'"+ensdomain+"\'...");
-    const result = await web3.eth.ens.setContenthash(
-        ensdomain, 
-        "ipfs://"+cidv0,
-        {
-            from: accounts[0]
-        }
-    );
-    console.log('SUCCESS!');
-    return result;
+async function updateToken_IPFSify(ipfs, tid, cid){    
+    let ipns_hash = await ipnsify(ipfs, tid, cid)
+    return ipns_hash;
 }
 /**
  * Function for decrypting the token's encrypted artwork.
@@ -130,26 +115,27 @@ async function updateToken_IPFSify(ensdomain, cid){
  * @param {string} share1 One of the 3 keys (company/artist/owner)
  * @param {string} share2 Another one of the 3 keys (company/artist/owner) (must be different from share1)
  */
-async function decryptToken_IPFSify(tokenDomain, share1, share2){
-    let accounts = await web3.eth.getAccounts();
+async function decryptToken_IPFSify(ipfs, tid, share1, share2){
     console.log("MAKE SURE THE IPFS DAEMON IS RUNNING.");
-    const ipfs = require('ipfs-api')({host: "localhost", port: 5001, protocol: "http"});
+    console.log("Getting the content hash from token id:\'"+tid.toString()+"\' ...");
+    const ipns_addr = await tokenmon.methods.getTokenURI(tid.toString()).call();
 
-    console.log("Getting the content hash from \'"+tokenDomain+"\' ...");
-    const hashobj = await web3.eth.ens.getContenthash(tokenDomain);
     console.log("SUCCESS!");
-    const content_hash = hashobj['decoded'];
     // buffer object (ipfsobj)
+    console.log("Resolving the IPNS address...");
+    const ipfs_hash = await ipfs.name.resolve(ipns_addr.toString());
     console.log("Getting token metadata...");
-    const ipfsobj = await ipfs.files.cat(content_hash+"/metadata.json");
+    const ipfsobj = await ipfs.files.cat(ipfs_hash.split("/")[2])
     const metadata = JSON.parse(ipfsobj.toString());
     console.log("SUCCESS!");
-    
     // Get encrypted image:
     console.log("Downloading the encrypted artwork...");
     const img_obj = await ipfs.files.cat(metadata["image"]);
+    // TODO: fix download bug --> becomes udefined.
     console.log("SUCCESS!");
-    const enc_path = "temp/"+metadata["image"].split("/")[1];
+    //const enc_path = "temp/"+metadata["image"];
+    const enc_path = 'temp/artwork.'+metadata['format']+".enc";
+    console.log(enc_path);
     // Write encrypted image on disk
     console.log("Saving file on disk...");
     fs.createWriteStream(enc_path).write(img_obj);
@@ -174,11 +160,9 @@ async function ipnsify(ipfs, tid, cidv1) {
     if (name_keys.includes(tid)) {
       console.log("Key responding to", tid, "already exists.")
       console.log("Updating the existing key..")
-      console.log('HERE');
-      const ipns = await ipfs.name.publish(cidv1.cid, {
+      const ipns = await ipfs.name.publish(cidv1, {
         key: tid
       });
-      console.log('END HERE');
       console.log(`https://gateway.ipfs.io/ipns/${ipns.name}`);
       updateJSON(tid, cidv1.path, ipns.name)
       return ipns.name
@@ -192,7 +176,7 @@ async function ipnsify(ipfs, tid, cidv1) {
       })
       console.log("Publishing...");
       sleep(500)
-      const ipns = await ipfs.name.publish(cidv1.cid, {
+      const ipns = await ipfs.name.publish(cidv1, {
           key: tid
         }
       );
@@ -201,7 +185,7 @@ async function ipnsify(ipfs, tid, cidv1) {
       return ipns.name
   
     }
-  }
+}
   
   
 function updateJSON(tid, cid, name) {
@@ -277,76 +261,105 @@ async function get(name) {
 
 // -------------------- DEMO --------------------
 
-async function cryptographyDemo(){
-    let accounts = await web3.eth.getAccounts();
-    const tid = await tokenmon.methods.getNextAvailableId().call();
+async function createDemo(){
+  const ipfs = await IPFS.create();
+  let accounts = await web3.eth.getAccounts();
+  const tid = await tokenmon.methods.getNextAvailableId().call();
 
-    var artworkpath = cpt.encrypt('abetatok'+tid.toString()+".nyxto.eth", 'img/nanopodio.jpg');
-    const cid = await uploadToken(
-        'Fernando Alonso',
-        'Fernando Alonso, two-time formula one world champion. Goat.',
-        {
-            'racepace' : 'outstanding',
-            'wdc' : '2'
-        },
-        artworkpath,
-        'img/nanopodio_cover.jpg'
-    );
+  var artworkpath = cpt.encrypt(tid.toString(), 'img/artwork.jpg');
+  const cid = await uploadToken_IPFSify(
+    ipfs,
+    'Earth Test',
+    'Fernando Alonso, two-time formula one world champion. Goat.',
+    {
+        'racepace' : 'outstanding',
+        'wdc' : '2'
+    },
+    artworkpath,
+    'img/artwork.jpg'
+  );
 
-    const link = await createToken(tid, cid);
-    const res = await tokenmon.methods.createToken(link).send({
-        from: accounts[0]
-    });
-    
-    console.log(res);
+  const ipns_addr = await createToken_IPFSify(ipfs, tid, cid);
+  const res = await tokenmon.methods.createToken(ipns_addr).send({
+      from: accounts[0]
+  });
+  
+  console.log(res);
 }
 
-async function cryptographyUpdateDemo(){
+async function updateDemo(){
+  const ipfs = await IPFS.create();
+  var artworkpath = cpt.encrypt("1", 'img/sebhm.jpg');
+  const cid = await uploadToken_IPFSify(
+    ipfs,
+    'Sebastian Vettel',
+    'Sebastian Vettel, four-time formula one world champion.',
+    {
+        'racepace' : 'excellent',
+        'wdc' : '4'
+    },
+    artworkpath,
+    'img/sebhm_cover.jpg'
+  );
 
-    var artworkpath = cpt.encrypt("abetatok1.nyxto.eth", 'img/sebhm.jpg');
-    const cid = await uploadToken(
-        'Sebastian Vettel',
-        'Sebastian Vettel, four-time formula one world champion.',
-        {
-            'racepace' : 'excellent',
-            'wdc' : '4'
-        },
-        artworkpath,
-        'img/sebhm_cover.jpg'
-    );
-
-    const res = await updateToken('abetatok1.nyxto.eth', cid);
-    
-    console.log(res);
+  const res = await updateToken_IPFSify(ipfs, "1", cid);
+  console.log(res);
 }
 
 async function breakSealDemo(){
-    let accounts = await web3.eth.getAccounts();
+  const ipfs = require('ipfs-api')({host: "localhost", port: 5001, protocol: "http"});
 
-    const sealIsBroken = await tokenmon.methods.isBroken("1").call();
-    if(!sealIsBroken){
-        const res = await tokenmon.methods.breakSeal("1").send({
-            from: accounts[0]
-        });
-    }   
-    decryptToken("abetatok1.nyxto.eth", cpt.getKeys("abetatok1.nyxto.eth")["owner"], cpt.getKeys("abetatok1.nyxto.eth")["company"]);
+  let accounts = await web3.eth.getAccounts();
+
+  const sealIsBroken = await tokenmon.methods.isBroken("4").call();
+  if(!sealIsBroken){
+      const res = await tokenmon.methods.breakSeal("4").send({
+          from: accounts[0]
+      });
+  }   
+  await decryptToken_IPFSify(ipfs, "4", cpt.getKeys("4")["owner"], cpt.getKeys("4")["company"]);
+  return 0;
 }
 
-async function proxeirmain(){
-    const ipfs = await IPFS.create();
-    const met_cid = await uploadToken_IPFSify(
-        ipfs,
-        "Ipfsify",
-        "This is a test of ipfsify.",
-        {
-            "mosul" : "ipsum",
-            "death" : "0"
-        },
-        "img/king.jpg",
-        "img/king.jpg"
-    );
-    const ipname = await ipnsify(ipfs, "zero", met_cid);
-    console.log(ipname);
+async function createIPNSDemo(){
+  const ipfs = await IPFS.create();
+  const met_cid = await uploadToken_IPFSify(
+      ipfs,
+      "Ipfsify",
+      "This is a test of ipfsify.",
+      {
+          "mosul" : "ipsum",
+          "death" : "0"
+      },
+      "img/king.jpg",
+      "img/king.jpg"
+  );
+  const ipname = await ipnsify(ipfs, "zero", met_cid);
+  console.log(ipname);
 };
 
-proxeirmain();
+async function updateIPNSDemo(){
+  const ipfs = await IPFS.create();
+  const cid = await uploadToken_IPFSify(
+    ipfs,
+    'Ipfsify2',
+    'This is a test of ipfsify2.',
+    {
+      "mosul" : "ipsum",
+      "death" : "0"
+    },
+    "img/nanopodio_cover.jpg",
+    "img/nanopodio_cover.jpg"
+  );
+
+  const res = await updateToken_IPFSify(ipfs, "zero", cid);
+  console.log(res);
+
+}
+
+async function kappa(){
+  const ipns_addr = await tokenmon.methods.getTokenURI("3").call();
+  return ipns_addr;  
+}
+
+breakSealDemo().then(console.log);
