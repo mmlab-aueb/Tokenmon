@@ -266,17 +266,17 @@ async function createDemo(){
   let accounts = await web3.eth.getAccounts();
   const tid = await tokenmon.methods.getNextAvailableId().call();
 
-  var artworkpath = cpt.encrypt(tid.toString(), 'img/artwork.jpg');
+  var artworkpath = cpt.encrypt(tid.toString(), 'img/bulbasaur.gif');
   const cid = await uploadToken_IPFSify(
     ipfs,
-    'Earth Test',
-    'Fernando Alonso, two-time formula one world champion. Goat.',
+    'Bulbasaur',
+    'One of the most recongizable starter Pokemon of all time.',
     {
-        'racepace' : 'outstanding',
-        'wdc' : '2'
+        'type' : 'grass',
+        'hp': "100"
     },
     artworkpath,
-    'img/artwork.jpg'
+    'img/bulbasaur_cover.png'
   );
 
   const ipns_addr = await createToken_IPFSify(ipfs, tid, cid);
@@ -289,20 +289,20 @@ async function createDemo(){
 
 async function updateDemo(){
   const ipfs = await IPFS.create();
-  var artworkpath = cpt.encrypt("1", 'img/sebhm.jpg');
+  var artworkpath = cpt.encrypt("9", 'img/venusaur.gif');
   const cid = await uploadToken_IPFSify(
     ipfs,
-    'Sebastian Vettel',
-    'Sebastian Vettel, four-time formula one world champion.',
+    'Venusaur',
+    'Bulbasaur\'s final form.',
     {
-        'racepace' : 'excellent',
-        'wdc' : '4'
-    },
+      'type' : 'grass',
+      'hp': "1000"
+  },
     artworkpath,
-    'img/sebhm_cover.jpg'
+    'img/venusaur_cover.png'
   );
 
-  const res = await updateToken_IPFSify(ipfs, "1", cid);
+  const res = await updateToken_IPFSify(ipfs, "9", cid);
   console.log(res);
 }
 
@@ -311,13 +311,13 @@ async function breakSealDemo(){
 
   let accounts = await web3.eth.getAccounts();
 
-  const sealIsBroken = await tokenmon.methods.isBroken("4").call();
+  const sealIsBroken = await tokenmon.methods.isBroken("9").call();
   if(!sealIsBroken){
-      const res = await tokenmon.methods.breakSeal("4").send({
+      const res = await tokenmon.methods.breakSeal("9").send({
           from: accounts[0]
       });
   }   
-  await decryptToken_IPFSify(ipfs, "4", cpt.getKeys("4")["owner"], cpt.getKeys("4")["company"]);
+  await decryptToken_IPFSify(ipfs, "9", cpt.getKeys("9")["owner"], cpt.getKeys("9")["company"]);
   return 0;
 }
 
@@ -357,9 +357,6 @@ async function updateIPNSDemo(){
 
 }
 
-async function kappa(){
-  const ipns_addr = await tokenmon.methods.getTokenURI("3").call();
-  return ipns_addr;  
-}
-
-breakSealDemo().then(console.log);
+//createDemo().then(console.log);
+//updateDemo().then(console.log);
+//breakSealDemo().then(console.log);
