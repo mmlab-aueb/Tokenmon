@@ -16,7 +16,7 @@ const client = new Client();
 const cpt = require('./cryptography');
 
 // This import is required to get the bytecode/abi of the smart contract.
-const tokenmon = require('./Tokenmon');
+const tokenmon = require('./Contract');
 
 // CONSTANTS - API KEYS
 const nftstorage_apikey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDFBMEE3ODJlZmRBRmUxRmFiMWE2NjBEYzUwZTg1MDE3YTMxODIxNDUiLCJpc3MiOiJuZnQtc3RvcmFnZSIsImlhdCI6MTYyNjg2MDk1NTgzOCwibmFtZSI6InRlc3QifQ.lySWBgIWC6YxBcKo2CKHWqODWHePpJokOMpaJuXh5d0";
