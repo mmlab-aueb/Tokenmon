@@ -357,6 +357,7 @@ async function updateIPNSDemo(){
 
 }
 
+//TODO: introduce sleep function.
 //createDemo().then(console.log);
 //updateDemo().then(console.log);
 //breakSealDemo().then(console.log);
