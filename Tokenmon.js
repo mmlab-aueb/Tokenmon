@@ -46,7 +46,6 @@ class Tokenmon {
         console.log("Fetching web3 accounts...");
         this.#accounts = await this.#web3.eth.getAccounts();
         console.log("DONE!");
-        console.log(this.#accounts[0] + " fetched.");
     }
 
     /**
