@@ -18,29 +18,20 @@ class TokenmonIPNS {
 
     #ipfs
     #provider // = new HDWalletProvider()...
-    #nftstorage_apikey // the NFT.storage api key
-    #web3storage_apikey // the Web3.storage api key
     #web3 // the web3 object
     #contract // require('./Tokenmon')
-    #nftStorageClient
-    #web3StorageClient
     #accounts
 
     /**
      * @param {IPFS Client} ipfs
      * @param {HDWalletProvider} provider 
-     * @param {JSON} keys 
      * @param {web3.eth.Contract} contract 
      */
-    constructor(ipfs, provider, keys, contract){
+    constructor(ipfs, provider, contract){
         this.#ipfs = ipfs;
-        this.#nftstorage_apikey = keys.nftstorage_apikey;
-        this.#web3storage_apikey = keys.web3storage_apikey;
         this.#provider = provider;
         this.#contract = contract;
         this.#web3 = new Web3(this.#provider);
-        this.#nftStorageClient = new NFTStorage({token: this.#nftstorage_apikey});
-        this.#web3StorageClient = new Web3Storage({ token: this.#web3storage_apikey });
     }
 
     /**
@@ -239,7 +230,7 @@ class TokenmonIPNS {
       
         if (writeFile) {
           console.log('Updating key database...');
-          fs.writeFileSync("db.json", JSON.stringify(keys));
+          fs.writeFileSync("keys/db.json", JSON.stringify(keys));
           console.log('SUCCESS!');
         }
     }
